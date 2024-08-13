@@ -47,5 +47,4 @@ export class PasswordInputComponent {
       return null
     }
   }
-  protected readonly Object = Object
 }
