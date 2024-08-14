@@ -1,13 +1,16 @@
-import {Component, Input} from '@angular/core';
+import {Component, forwardRef, Injector, Input, type OnInit, Self} from '@angular/core';
 import {NgClass, NgIf, NgStyle} from '@angular/common'
 import {
   AbstractControl,
-  FormControl,
+  type ControlValueAccessor,
+  NG_VALUE_ACCESSOR,
+  NgControl,
   ReactiveFormsModule,
   type ValidationErrors,
   type ValidatorFn,
   Validators
 } from '@angular/forms'
+import {strengthValidator} from '../validators/password-strength-validator'
 
 @Component({
   selector: 'password-input',
@@ -18,33 +21,57 @@ import {
     ReactiveFormsModule,
     NgIf
   ],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => PasswordInputComponent),
+      multi: true,
+    },
+  ],
   templateUrl: './password-input.component.html',
   styleUrl: './password-input.component.scss'
 })
-export class PasswordInputComponent {
-  password = new FormControl('', [
-    Validators.required,
-    Validators.minLength(8),
-    this.strengthValidator()
-  ])
-  strengthValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const digitExp = /\d/
-      const letterExp = /.*[a-zA-Z].*/
-      const symbolExp = /[-!$%^&*()@_+|~=`{}\[\]:";'<>?,.\/]/
-      const hasDigit = digitExp.test(control.value)
-      const hasLetter = letterExp.test(control.value)
-      const hasSymbol = symbolExp.test(control.value)
-      if (hasDigit && hasLetter && hasSymbol) {
-        return null
-      }
-      if ((hasLetter && hasDigit) || (hasLetter && hasSymbol) || (hasDigit && hasSymbol)) {
-        return {mediumPassword: {value: control.value}}
-      }
-      if (hasLetter || hasDigit || hasSymbol) {
-        return {weakPassword: {value: control.value}}
-      }
-      return null
-    }
+export class PasswordInputComponent implements ControlValueAccessor, OnInit {
+  value: string = ''
+
+  control: AbstractControl | null = null
+
+  constructor(@Self() private injector: Injector) {
+
+  }
+
+  ngOnInit() {
+    const controlDir = this.injector.get(NgControl)
+    this.control = controlDir.control
+    this.control?.addValidators([
+      Validators.required,
+      Validators.minLength(8),
+      strengthValidator()
+    ]);
+  }
+
+  onChangeFn = (value: string) => {
+  }
+  onTouchedFn = () => {}
+
+
+  onInput(event: Event) {
+    const newValue = (event.target as HTMLInputElement).value;
+    this.value = newValue
+    this.onChangeFn(newValue)
+  }
+
+  registerOnChange(fn: any): void {
+    this.onChangeFn = fn
+  }
+
+  registerOnTouched(fn: any): void {
+    this.onTouchedFn = fn
+  }
+
+  writeValue(value: string): void {
+    this.value = value
+    this.onChangeFn(value)
+    this.onTouchedFn();
   }
 }
